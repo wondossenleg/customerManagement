@@ -1,0 +1,37 @@
+#%RAML 1.0 DataType
+
+properties:
+  customerID:
+    type: string
+  fName:
+    type: string
+  lName:
+    type: string
+  phoneNumber:
+    type: string
+    pattern: ^\d{3}-?\d{3}-?\d{4}$
+  SSN:
+    type: string
+    pattern: ^\d{3}-?\d{2}-?\d{4}$
+  customerAddress:
+    type: object
+    properties:
+      address?: 
+        type: string
+        description: street and identification number
+      
+      city?: 
+        type: string
+        description: location
+      state?: 
+        type: string
+        description: district with own government
+      zip_code?: 
+        type: string
+        description: postal code
+      
+    
+
+  
+
+

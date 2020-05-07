@@ -1,0 +1,82 @@
+#%RAML 1.0
+title: Customer Management API
+version: v2.0
+baseUri: https://anypoint.mulesoft.com/mocking/api/v1/links/66681210-9684-4756-a8e3-babf84aba958/ # baseUri: https://localhost:8081/api
+
+securitySchemes:
+  basic: !include /customer/securityScheme.raml
+
+types: 
+  customer: !include /customer/dataType.raml
+traits:
+ responseMessage:
+      responses: 
+        400:
+          body: 
+            application/json:
+              example: 
+                {message: "bad request"}  
+        401:
+          body:
+            application/json:
+              example:
+                {message: "Unauthorized"}
+        500:
+          body:
+            application/json:
+              example:
+                {message: "Internal server
+error"}
+
+/customers:
+  post:
+    securedBy:
+      [basic]
+    displayName: Create customer
+    description: Create customer contact  
+    responses:
+      201:
+        body: 
+          application/json:
+            example: {message: "customer created successfully"}
+    is: [responseMessage]
+
+  /{customerId}: 
+    uriParameters:
+      customerId:
+        type: string
+        required: true       
+    get:
+      displayName: Get customers
+      description: Return customer information by customerId 
+      responses:
+        200: 
+          body:
+            application/json:
+              type: customer
+              example: !include /customer/example.raml
+      is: [responseMessage]
+    put:
+      securedBy:
+       [basic]
+      displayName: Update customer
+      description: Update customer contact by customerId  
+     
+      responses:
+        200:
+          body: 
+              application/json: 
+                example: {message: "customer updated successfully"}
+    is: [responseMessage]
+
+    delete:
+      securedBy:
+       [basic]
+      displayName: Delete customer
+      description: Delete customer contact by customerId  
+      responses:
+        200:
+          body: 
+            application/json: 
+              example: {message: "customer deleted successfully"}
+      is: [responseMessage]

@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+	<flow name="validationFlow" doc:id="4605368d-2ba5-4477-a29e-79c0bbf45250" >
+		<try doc:name="Try" doc:id="cb41e52a-1359-40b1-8e8c-74d70fc6c46a" >
+			<validation:matches-regex doc:name="phoneNumber" doc:id="df396e70-f1b0-4017-bf42-0a437677b2c7" value="#[payload.phoneNumber]" regex="^\d{3}-\d{3}-\d{4}$" message="invalid phone number" />
+			<error-handler>
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="4d2349e9-56e4-4ff7-bcb7-2b658e9b6f36" type="VALIDATION:MISMATCH">
+					<ee:transform doc:name="Transform Message" doc:id="d3497b99-ecff-4f8d-a711-9ddb074d847b" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "phone number not valid"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<try doc:name="Try" doc:id="35ca6264-9460-4ba1-8c18-a0a2d83745fa" >
+			<validation:matches-regex doc:name="Matches regex" doc:id="60ed2237-ba70-46a5-a101-47fcc7fff51e" value="#[payload.SSN]" regex="^\d{3}-\d{2}-\d{4}$" message="SSN not valid" />
+			<error-handler>
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="08c589c2-8e33-4907-98c7-92e09ae7fbf5" type="VALIDATION:MISMATCH">
+					<ee:transform doc:name="Transform Message" doc:id="06906cf3-b183-4bb4-8819-4ccd851371cf" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "SSN not valid"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+	</flow>
+	<flow name="updateFlow" doc:id="bed3b46d-90ee-4461-95ad-b1154cd21274" >
+		<flow-ref doc:name="Flow Reference" doc:id="640050d3-b3d1-4f3f-8945-8d270ecc86ec" name="validationFlow"/>
+		<db:update doc:name="Update" doc:id="110717bc-148a-4dd8-8a8e-f7e781a37139" config-ref="Database_Config">
+			<db:sql>UPDATE customers SET fName=:fName,lName=:lName,phoneNumber=:phoneNumber,SSN=:SSN,
+customerAddress=:customerAddress
+WHERE customerID=:customerID</db:sql>
+			<db:input-parameters><![CDATA[#[{
+customerID: attributes.uriParams.customerId,
+fName: payload.fName,
+lName: payload.lName,
+phoneNumber:payload.phoneNumber,
+SSN:payload.SSN,
+customerAddress:payload.customerAddress
+}]]]></db:input-parameters>
+		</db:update>
+		<choice doc:name="Choice" doc:id="b439e38b-d74e-4c7e-afad-5fc231c6892c" >
+			<when expression="#[payload.affectedRows == 0]">
+				<ee:transform doc:name="Transform Message" doc:id="4eb7617c-856f-4898-91b0-15c8537f849b">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "customer not found"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="6aae98ba-ffe8-43cd-962c-4c52089afcd7" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "customer updated successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="deleteFlow" doc:id="1f922602-3cc4-44d4-a3b0-68d742858da5" >
+		<db:delete doc:name="Delete" doc:id="609889dc-3403-45e1-9b64-920b5b9f949b" config-ref="Database_Config">
+					<db:sql>DELETE FROM customers
+WHERE customerId = :customerId  </db:sql>
+					<db:input-parameters><![CDATA[#[customerId: attributes.uriParams.customerId]]]></db:input-parameters>
+				</db:delete>
+		<choice doc:name="Choice" doc:id="656f1896-e84f-4a00-a3d4-befd59ab446c" >
+			<when expression="#[payload &gt; 0]">
+				<ee:transform doc:name="Transform Message" doc:id="734fe16c-09d7-4a76-ae0f-2400f8fdab48" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "customer deleted successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="8b69852c-07e1-4f61-acd7-35486248c754" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "customer not found"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="93a55dbd-db86-427c-b7df-76145fed1a56" message="#[payload]"/>
+	</flow>
+	<flow name="selectFlow" doc:id="7d5fba83-59a3-46ad-9aa8-64d362756e97" >
+		<db:select doc:name="Select" doc:id="d79dddda-73c9-4357-8f09-1df1caec1945" config-ref="Database_Config">
+			<db:sql >SELECT * FROM customers
+WHERE customerId = :customerId   or SSN = :customerId
+</db:sql>
+			<db:input-parameters ><![CDATA[#[customerId: message.attributes.uriParams.'customerId']]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="8b57e5c2-3cb1-4270-86db-80003af27561" >
+			<when expression="#[payload.customerID != null]">
+				<ee:transform doc:name="Transform Message" doc:id="448d1e88-1f90-4cd9-9a0e-a486f3d508e7">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="fba53d66-b444-4e9e-abea-341cb3e7e70d" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "customer not found"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="4338ffd9-5a96-4abd-ac8d-c05ee9e6ecb9" message="#[payload]" />
+	</flow>
+	<flow name="insertFlow" doc:id="0b8643b6-4a14-4eee-9a54-58f26c34abcf" >
+		<flow-ref doc:name="Flow Reference" doc:id="7c48102a-af71-4c4f-b8ea-9fc7a88de74a" name="validationFlow"/>
+		<db:insert doc:name="Insert" doc:id="3f3cfb3e-f691-4ebb-a20a-afd686b85421" config-ref="Database_Config">
+			<db:sql>INSERT INTO customers (customerID,fName,lName,phoneNumber,SSN,customerAddress)
+
+VALUES (:customerID,:fName,:lName,:phoneNumber,:SSN,:customerAddress);</db:sql>
+			<db:input-parameters><![CDATA[#[{
+customerID:payload.customerID,
+fName: payload.fName,
+lName: payload.lName,
+phoneNumber:payload.phoneNumber,
+SSN:payload.SSN,
+customerAddress:payload.customerAddress
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="859b711e-1215-407e-ac29-ae7f29190fe7" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "customer created successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="e45d03ff-dddf-4188-922c-a1dbe0b7dc9e" type="DB:QUERY_EXECUTION">
+				<ee:transform doc:name="Transform Message" doc:id="a2061a92-8668-4560-8ff6-b804ea989511" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "customer existed"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	
+	
+</mule>
